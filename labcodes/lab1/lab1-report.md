@@ -404,7 +404,8 @@ ebp:0x00007bf8 eip:0x00007d68 args: 0xc031fcfa 0xc08ed88e 0x64e4d08e 0xfa7502a8
 
 
 [练习6.3] 请编程完善trap.c中的中断处理函数trap，在对时钟中断进行处理的部分填写trap函数
-在trap_dispatch函数中添加如下代码：
+
+在trap_dispatch函数的case IRQ_OFFSET + IRQ_TIMER:中添加如下代码：
 
 	ticks ++;
 	if (ticks % TICK_NUM == 0) {
@@ -414,7 +415,3 @@ ebp:0x00007bf8 eip:0x00007d68 args: 0xc031fcfa 0xc08ed88e 0x64e4d08e 0xfa7502a8
 
 实现过程：
 首先调用了kern/driver/clock.c中的全局变量ticks，ticks在kern/driver/clock.c已被初始化为0。然后每次增加100后调用一次print_ticks()。
-
-
-
-##【练习7】
