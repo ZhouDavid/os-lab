@@ -9,7 +9,7 @@
    usually split, and the remainder added to the list as another free block.
    Please see Page 196~198, Section 8.2 of Yan Wei Min's chinese book "Data Structure -- C programming language"
 */
-// LAB2 EXERCISE 1: YOUR CODE
+// LAB2 EXERCISE 1: 2013011326
 // you should rewrite functions: default_init,default_init_memmap,default_alloc_pages, default_free_pages.
 /*
  * Details of FFMA
@@ -88,20 +88,26 @@ default_alloc_pages(size_t n) {
     }
     struct Page *page = NULL;
     list_entry_t *le = &free_list;
-    while ((le = list_next(le)) != &free_list) {
+    list_entry_t *pre_le = &free_list;
+    for (le = list_next(le);le!=&free_list;le = list_next(le)) {
         struct Page *p = le2page(le, page_link);
         if (p->property >= n) {
             page = p;
             break;
         }
-    }
+        pre_le = le;
+    	}
     if (page != NULL) {
-        list_del(&(page->page_link));
-        if (page->property > n) {
+        if(page->property > n) {
+            list_del(&(page->page_link));
             struct Page *p = page + n;
-            p->property = page->property - n;
-            list_add(&free_list, &(p->page_link));
-    }
+            p -> property = page -> property - n;
+            list_add_after(pre_le, &(p->page_link));
+            page ->property = n;
+        }
+        else if(page->property == n) {
+            list_del(&(page->page_link));
+        }
         nr_free -= n;
         ClearPageProperty(page);
     }
@@ -120,10 +126,14 @@ default_free_pages(struct Page *base, size_t n) {
     base->property = n;
     SetPageProperty(base);
     list_entry_t *le = list_next(&free_list);
-    while (le != &free_list) {
+    list_entry_t *after_le = &free_list;
+    for (;le != &free_list;le = list_next(le)) {
         p = le2page(le, page_link);
-        le = list_next(le);
-        if (base + base->property == p) {
+	if (base + base->property < p) {
+            after_le = &(p->page_link);
+            break;
+        }
+        else if (base + base->property == p) {
             base->property += p->property;
             ClearPageProperty(p);
             list_del(&(p->page_link));
@@ -136,7 +146,7 @@ default_free_pages(struct Page *base, size_t n) {
         }
     }
     nr_free += n;
-    list_add(&free_list, &(base->page_link));
+    list_add_before(after_le, &(base->page_link));
 }
 
 static size_t
