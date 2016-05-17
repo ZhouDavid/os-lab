@@ -46,22 +46,61 @@
 
 ##练习2：补充完成基于FIFO的页面替换算法
 
-####实现过称：
+###2.1 实现过称：
 
-`_fifo_map_swappable`找到循环链表后，将新的页面插入链表头部。`_fifo_swap_out_victim`找到链表头部的prev(即链表尾部)删除即可。
+`_fifo_map_swappable` 找到循环链表后，将新的页面插入链表头部。`_fifo_swap_out_victim` 找到链表头部的prev(即链表尾部)删除即可。代码如下：
+	
+	static int
+	_fifo_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in)
+	{
+	    list_entry_t *head=(list_entry_t*) mm->sm_priv;
+	    list_entry_t *entry=&(page->pra_page_link);
+	 
+	    assert(entry != NULL && head != NULL);
+	    //record the page access situlation
+	    /*LAB3 EXERCISE 2: 2013011326*/ 
+	    //(1)link the most recent arrival page at the back of the pra_list_head qeueue.
+	    list_add(head, entry);
+	    return 0;
+	}
 
-####如果要在ucore上实现"extended clock页替换算法"请给你的设计方案，现有的swap_manager框架是否足以支持在ucore中实现此算法？如果是，请给你的设计方案。如果不是，请给出你的新的扩展和基此扩展的设计方案。
+	static int
+	_fifo_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick)
+	{
+	     list_entry_t *head=(list_entry_t*) mm->sm_priv;
+	         assert(head != NULL);
+	     assert(in_tick==0);
+	     /* Select the victim */
+	     /*LAB3 EXERCISE 2: 2013011326*/ 
+	     //(1)  unlink the  earliest arrival page in front of pra_list_head qeueue
+	     //(2)  set the addr of addr of this page to ptr_page
+	     list_entry_t *le = head->prev;
+	     assert(head != le);
+	     struct Page *p = le2page(le, pra_page_link);
+	     list_del(le);
+	     assert(p != NULL);
+	     *ptr_page = p;
+	     return 0;
+	}
 
-现有的`swap_manager`框架足以支持在ucore中实现此算法，与fifo相比不同的是需要在`swap out`的时候对当前指针指向的页所对应的PTE进行查询，得到（引用位,修改位）。同时拓展时钟算法需要一个“时针”，因此需要在struct mm中添加一项只想swap链表中某项的指针。
 
-* 需要被换出的页的特征是什么？
+###2.2 如果要在ucore上实现"extended clock页替换算法"请给你的设计方案，现有的swap_manager框架是否足以支持在ucore中实现此算法？如果是，请给你的设计方案。如果不是，请给出你的新的扩展和基此扩展的设计方案。
+现有框架可以实现clock页面替换算法。
 
-	PTE_A和PTE_D都被置为了零.
+#####2.2.1 设计方案：
 
-* 在ucore中如何判断具有这样特征的页？
+1. 在`mm_struct`当中加入一个指向某一页的指针，该指针由`mm_struct`维护。
+2. 在`swap_out_victim`函数中加入获取当前指针（即`mm_struct`中维护的指针）指向页面所对应的PTE部分。
+3. 对得到的PTE进行引用位和修改位的检查，如果引用位为0则淘汰该页面，否则向前移动指针。
 
-	读取当前页的PTE，得到（引用位，修改位），做出判断。
+#####2.2.2 需要被换出的页的特征是什么？
 
- * 何时进行换入和换出操作？
+	PTE_A和PTE_D都被置为0.
 
-	当试图得到空闲页时，发现当前没有空闲的物理页可供分配，这时才开始查找“不常用”页面，并把一个或多个这样的页换出到硬盘上。
+#####2.2.3 在ucore中如何判断具有这样特征的页？
+
+	读取当前页的PTE，得到引用位和修改位判断即可。
+
+#####2.2.4 何时进行换入和换出操作？
+
+	页面访问合法且试图得到空闲页失败（没有页空闲时），这时会利用各种页面替换算法替换
