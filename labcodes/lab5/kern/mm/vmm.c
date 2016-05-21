@@ -434,7 +434,7 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
     ret = -E_NO_MEM;
 
     pte_t *ptep=NULL;
-    /*LAB3 EXERCISE 1: YOUR CODE
+    /*LAB3 EXERCISE 1: 2013011326
     * Maybe you want help comment, BELOW comments can help you finish the code
     *
     * Some Useful MACROs and DEFINEs, you can use them in below implementation.
@@ -452,14 +452,14 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
     *
     */
 #if 0
-    /*LAB3 EXERCISE 1: YOUR CODE*/
+    /*LAB3 EXERCISE 1: 2013011326*/
     ptep = ???              //(1) try to find a pte, if pte's PT(Page Table) isn't existed, then create a PT.
     if (*ptep == 0) {
                             //(2) if the phy addr isn't exist, then alloc a page & map the phy addr with logical addr
 
     }
     else {
-    /*LAB3 EXERCISE 2: YOUR CODE
+    /*LAB3 EXERCISE 2: 2013011326
     * Now we think this pte is a  swap entry, we should load data from disk to a page with phy addr,
     * and map the phy addr with logical addr, trigger swap manager to record the access situation of this page.
     *
@@ -493,6 +493,38 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
         }
    }
 #endif
+   if ((ptep = get_pte(mm->pgdir, addr, 1)) == NULL) {
+        cprintf("get_pte in do_pgfault failed\n");
+        goto failed;
+    }
+
+    if (*ptep == 0) {
+        if(pgdir_alloc_page(mm->pgdir, addr, perm) == NULL) {
+            cprintf("pgdir_alloc_page in do_pgfault failed\n");
+            goto failed;
+        }
+    }
+    else {
+        struct Page * page = NULL;
+        cprintf("do pgfault: ptep %x, pte %x\n",ptep, *ptep);
+        if (*ptep & PTE_P) {
+            panic("error write a non-writable pte");
+        } else {
+            if(swap_init_ok) {
+                if ((ret = swap_in(mm, addr, &page)) != 0) {
+                    cprintf("swap_in in do_pgfault failed\n");
+                    goto failed;
+                }
+            }
+            else {
+                cprintf("no swap_init_ok but ptep is %x, failed\n",*ptep);
+                goto failed;
+            }
+        }
+        page_insert(mm->pgdir, page, addr, perm);
+        swap_map_swappable(mm, addr, page, 1);
+        page->pra_vaddr = addr;
+    }
    ret = 0;
 failed:
     return ret;
