@@ -4,6 +4,7 @@
 #include <wait.h>
 #include <proc.h>
 
+
 void
 wait_init(wait_t *wait, struct proc_struct *proc) {
     wait->proc = proc;

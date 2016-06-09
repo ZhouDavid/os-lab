@@ -50,14 +50,9 @@ idt_init(void) {
       */
     extern uintptr_t __vectors[];
     int i;
-    for (i = 0; i < IRQ_OFFSET; i ++) {
-        SETGATE(idt[i], 1, GD_KTEXT, __vectors[i], DPL_KERNEL);
-    }
-    for (i = IRQ_OFFSET; i < sizeof(idt)/sizeof(struct gatedesc); i++) {
+    for (i = 0; i < sizeof(idt) / sizeof(struct gatedesc); i ++) {
         SETGATE(idt[i], 0, GD_KTEXT, __vectors[i], DPL_KERNEL);
     }
-    SETGATE(idt[T_SWITCH_TOU], 0, GD_KTEXT, __vectors[T_SWITCH_TOU], DPL_KERNEL);
-    SETGATE(idt[T_SWITCH_TOK], 0, GD_KTEXT, __vectors[T_SWITCH_TOK], DPL_USER);
     lidt(&idt_pd);
 }
 
@@ -178,7 +173,7 @@ trap_dispatch(struct trapframe *tf) {
     char c;
 
     int ret;
-    struct trapframe temp = *tf;
+
     switch (tf->tf_trapno) {
     case T_PGFLT:  //page fault
         if ((ret = pgfault_handler(tf)) != 0) {
@@ -197,10 +192,10 @@ trap_dispatch(struct trapframe *tf) {
          * (2) Every TICK_NUM cycle, you can print some info using a funciton, such as print_ticks().
          * (3) Too Simple? Yes, I think so!
          */
-        ticks ++;
-        if(ticks % TICK_NUM == 0) {
-            print_ticks();
-        }
+    ticks ++;
+    if (ticks % TICK_NUM == 0) {
+        print_ticks();
+    }
         break;
     case IRQ_OFFSET + IRQ_COM1:
         c = cons_getc();
@@ -209,50 +204,11 @@ trap_dispatch(struct trapframe *tf) {
     case IRQ_OFFSET + IRQ_KBD:
         c = cons_getc();
         cprintf("kbd [%03d] %c\n", c, c);
-        if(c == '0') {
-            if(tf->tf_cs != USER_CS) {
-                cprintf("user\n");
-                temp.tf_cs = USER_CS;
-                temp.tf_ds = USER_DS;
-                temp.tf_es = USER_DS;
-                temp.tf_ss = USER_DS;
-                temp.tf_eflags |= FL_IOPL_MASK;
-                temp.tf_esp = (uint32_t)tf + sizeof(struct trapframe) - 8;
-                *((uint32_t *)tf - 1) = (uint32_t)&temp;
-            }
-        }
-        else if(c == '3') {
-            if(tf->tf_cs != KERNEL_CS) {
-                cprintf("kernel\n");
-                temp.tf_cs = KERNEL_CS;
-                temp.tf_ds = KERNEL_DS;
-                temp.tf_es = KERNEL_DS;
-                temp.tf_eflags &= ~FL_IOPL_MASK;
-                *((uint32_t *)tf - 1) = (uint32_t)&temp;
-            }
-        }
-        else if(c == '4') {
-            cprintf("debug\n");
-            print_trapframe(tf);
-        }
         break;
-    //LAB1 CHALLENGE 1 : 2013011326 you should modify below codes.
+    //LAB1 CHALLENGE 1 : YOUR CODE you should modify below codes.
     case T_SWITCH_TOU:
-        temp.tf_cs = USER_CS;
-        temp.tf_ds = USER_DS;
-        temp.tf_es = USER_DS;
-        temp.tf_ss = USER_DS;
-        temp.tf_eflags |= FL_IOPL_MASK;
-        temp.tf_esp = (uint32_t)tf + sizeof(struct trapframe) - 8;
-        *((uint32_t *)tf - 1) = (uint32_t)&temp;
-        break;
     case T_SWITCH_TOK:
-        // panic("T_SWITCH_** ??\n");
-        temp.tf_cs = KERNEL_CS;
-        temp.tf_ds = KERNEL_DS;
-        temp.tf_es = KERNEL_DS;
-        temp.tf_eflags &= ~FL_IOPL_MASK;
-        *((uint32_t *)tf - 1) = (uint32_t)&temp;
+        panic("T_SWITCH_** ??\n");
         break;
     case IRQ_OFFSET + IRQ_IDE1:
     case IRQ_OFFSET + IRQ_IDE2:
@@ -270,7 +226,7 @@ trap_dispatch(struct trapframe *tf) {
 /* *
  * trap - handles or dispatches an exception/interrupt. if and when trap() returns,
  * the code in kern/trap/trapentry.S restores the old CPU state saved in the
- * trapframe and then uses the iret instruction to return from the exception.
+ * trapframe and then uses the iret instruction to return from the exception.      uCore	在内核栈上维护了	tf	的链
  * */
 void
 trap(struct trapframe *tf) {
