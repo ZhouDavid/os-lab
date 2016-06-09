@@ -4,10 +4,10 @@
 ## [练习1]使用Round Robin调度算法(不需要编码)
 
 用meld比较之后可以发现两者差异不大，主要是多了一些跟调度相关的函数和变量。
-之后运行，错的出乎意料。仔细排查后，发现default_sched.c里的RR_enqueue()函数的assert(list_empty(&(proc->run_link)))有问题，
+之后运行，错的出乎意料。仔细排查后，发现`default_sched.c`里的`RR_enqueue()`函数的`assert(list_empty(&(proc->run_link)))`有问题，
 思考之后，初始化链表时就判断链表为空必然出错，注释掉后用make grade通过测试，除priority.c没有过去。
+具体结果如下：
 
-	eric@eric-ThinkPad-Edge-E430:~/桌面/lab6$ make grade
 	badsegment:              (2.6s)
 	  -check result:                             OK
 	  -check output:                             OK
@@ -64,7 +64,7 @@
 	Total Score: 163/170
 	make: *** [grade] 错误 1
 
-RR调度算法的整个执行过程如下：首先在ucore初始化函数kern_init()里调用sched_init()，在sched_init()函数里定义调度类sched_class = &default_sched_class，而default_sched_class在schedule文件底下使用函数指针做了很详细的定义，这样就可以完成整个RR调度算法。
+RR调度算法的整个执行过程如下：首先在ucore初始化函数kern_init()里调用sched_init()，在sched_init()函数里定义调度类`sched_class = &default_sched_class`，而`default_sched_class`在schedule文件底下使用函数指针做了很详细的定义，这样就可以完成整个RR调度算法。
 
 ###[练习1.1]请理解并分析sched_calss中各个函数指针的用法,并接合Round Robin调度算法描ucore的调度执行过程。
 sched_class函数定义如下：
